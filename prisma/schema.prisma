@@ -1,0 +1,194 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum PlanType {
+  FREE
+  PRO
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum UserRole {
+  ADMIN
+  STAFF
+}
+
+model Tenant {
+  id      String   @id @default(uuid())
+  name    String
+  logoUrl String?
+  plan    PlanType @default(FREE)
+
+  users     User[]
+  roles     Role[]
+  products  Product[]
+  customers Customer[]
+  orders    Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+//////////////////////
+// USER & AUTH
+//////////////////////
+
+model User {
+  id       String     @id @default(uuid())
+  name     String
+  email    String     @unique
+  password String
+  status   UserStatus @default(ACTIVE)
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
+
+  createdAt DateTime @default(now())
+  orders    Order[]
+}
+
+//////////////////////
+// RBAC
+//////////////////////
+
+model Role {
+  id       String @id @default(uuid())
+  name     String // ADMIN, STAFF, CUSTOM
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  users       User[]
+  permissions RolePermission[]
+
+  createdAt DateTime @default(now())
+}
+
+model Permission {
+  id          String  @id @default(uuid())
+  action      String  @unique // e.g. "create_product"
+  description String?
+
+  roles RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id])
+  permission Permission @relation(fields: [permissionId], references: [id])
+
+  @@id([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+}
+
+//////////////////////
+// PRODUCT (MEDICINE)
+//////////////////////
+
+model Product {
+  id      String  @id @default(uuid())
+  name    String
+  sku     String?
+  barcode String?
+
+  price     Float
+  costPrice Float?
+  stock     Int
+
+  expiryDate  DateTime?
+  description String?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+//////////////////////
+// CUSTOMER
+//////////////////////
+
+model Customer {
+  id      String  @id @default(uuid())
+  name    String
+  phone   String?
+  address String?
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  orders Order[]
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+//////////////////////
+// ORDER (POS / SALES)
+//////////////////////
+
+model Order {
+  id String @id @default(uuid())
+
+  tenantId String
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  customerId String?
+  customer   Customer? @relation(fields: [customerId], references: [id])
+
+  totalAmount Float
+  discount    Float @default(0)
+
+  createdById String
+  createdBy   User   @relation(fields: [createdById], references: [id])
+
+  items OrderItem[]
+
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+//////////////////////
+// ORDER ITEMS (CRITICAL FOR POS)
+//////////////////////
+
+model OrderItem {
+  id String @id @default(uuid())
+
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id])
+
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+
+  quantity Int
+  price    Float // snapshot price at sale time
+
+  @@index([orderId])
+}
