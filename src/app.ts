@@ -14,6 +14,10 @@ export function createApp() {
 
   app.use("/api", apiRouter);
 
+  app.get('/',(req,res)=>{
+    res.send("Server is running successfully")
+  })
+
   app.use(errorHandler);
 
   return app;
