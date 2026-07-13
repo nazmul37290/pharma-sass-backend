@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { AppError } from "../errors/app-error.js";
+import { apiError } from "../utils/api-response.js";
 
 export function errorHandler(
   err: unknown,
@@ -9,26 +10,16 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   if (err instanceof AppError) {
-    res.status(err.statusCode).json({
-      success: false,
-      message: err.message,
-    });
+    apiError(res, err.statusCode, err.message);
     return;
   }
 
   if (err instanceof ZodError) {
-    res.status(400).json({
-      success: false,
-      message: "Validation failed",
-      errors: err.flatten().fieldErrors,
-    });
+    apiError(res, 400, "Validation failed", err.flatten().fieldErrors);
     return;
   }
 
   console.error(err);
 
-  res.status(500).json({
-    success: false,
-    message: "Internal server error",
-  });
+  apiError(res, 500, "Internal server error");
 }

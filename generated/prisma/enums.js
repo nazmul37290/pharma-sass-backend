@@ -7,5 +7,16 @@
 *
 * 🟢 You can import this file directly.
 */
-export {};
+export const PlanType = {
+    FREE: 'FREE',
+    PRO: 'PRO'
+};
+export const UserStatus = {
+    ACTIVE: 'ACTIVE',
+    INACTIVE: 'INACTIVE'
+};
+export const UserRole = {
+    ADMIN: 'ADMIN',
+    STAFF: 'STAFF'
+};
 //# sourceMappingURL=enums.js.map
