@@ -6,10 +6,11 @@ import { prisma } from "../../lib/prisma.js";
 
 export interface AuthUserPayload {
     sub: string;
-    tenantId: string;
-    roleId: string;
+    tenantId?: string;
+    roleId?: string;
     roleName: string;
     email: string;
+    isSuperAdmin?: boolean;
 }
 
 declare global {
@@ -31,6 +32,19 @@ export function authenticate(): RequestHandler {
 
             const token = header.split(" ")[1];
             const decoded = jwt.verify(token, env.JWT_SECRET) as AuthUserPayload;
+
+            if (decoded.isSuperAdmin) {
+                req.user = {
+                    sub: decoded.sub,
+                    tenantId: decoded.tenantId,
+                    roleId: decoded.roleId,
+                    roleName: decoded.roleName,
+                    email: decoded.email,
+                    isSuperAdmin: true,
+                };
+                next();
+                return;
+            }
 
             const user = await prisma.user.findUnique({
                 where: { id: decoded.sub },
@@ -69,11 +83,36 @@ export function authenticate(): RequestHandler {
     };
 }
 
+export function authorizeSuperAdmin(): RequestHandler {
+    return async (req: Request, _res: Response, next: NextFunction) => {
+        try {
+            if (!req.user) {
+                next(new AppError(401, "Authentication required"));
+                return;
+            }
+
+            if (!req.user.isSuperAdmin) {
+                next(new AppError(403, "Super admin access required"));
+                return;
+            }
+
+            next();
+        } catch (error) {
+            next(error);
+        }
+    };
+}
+
 export function authorizePermission(requiredPermission: string): RequestHandler {
     return async (req: Request, _res: Response, next: NextFunction) => {
         try {
             if (!req.user) {
                 next(new AppError(401, "Authentication required"));
+                return;
+            }
+
+            if (req.user.isSuperAdmin) {
+                next();
                 return;
             }
 

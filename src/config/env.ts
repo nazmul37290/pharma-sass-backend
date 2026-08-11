@@ -6,6 +6,9 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   JWT_SECRET: z.string().min(1).default("dev-secret-change-me"),
+  SUPER_ADMIN_EMAIL: z.string().email().optional(),
+  SUPER_ADMIN_PASSWORD: z.string().min(8).max(100).optional(),
+  SUPER_ADMIN_PASSWORD_HASH: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
